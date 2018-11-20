@@ -1,7 +1,39 @@
 # dev
 
+# Version 0.5.0 (August 2018)
+
+-   Restructure of fingerprint module
+-   Pandas DataFrame getter in FeatureGenerator
+-   CatMAP API using ASE database.
+-   New active learning module.
+-   Small fixes in adsorbate fingerprinter.
+
+# Version 0.4.4 (August 2018)
+
+-   Major modifications to adsorbates fingerprinter
+-   Bag of site neighbor coordinations numbers implemented.
+-   Bag of connections implemented for adsorbate systems.
+-   General bag of connections implemented.
+-   Data cleaning function now return a dictionary with 'index' of clean features.
+-   New clean function to discard features with excessive skewness.
+-   New adsorbate-chalcogenide fingerprint generator.
+-   Enhancements to automatic identification of adsorbate, site.
+-   Generalized coordination number for site.
+-   Formal charges utility.
+-   New sum electronegativity over bonds fingerprinter.
+
+# Version 0.4.3 (May 2018)
+
+-   `ConvolutedFingerprintGenerator` added for bulk and molecules.
+-   Dropped support for Python3.4 as it appears to start causing problems.
+
+# Version 0.4.2 (May 2018)
+
 -   Genetic algorithm feature selection can parallelize over population within each generation.
 -   Default fingerprinter function sets accessible using `catlearn.fingerprint.setup.default_fingerprinters`
+-   New surrogate model utility
+-   New utility for evaluating cutoff radii for connectivity based fingerprinting.
+-   `default_catlearn_radius` improved.
 
 # Version 0.4.1 (April 2018)
 

@@ -3,7 +3,7 @@ import numpy as np
 import unittest
 
 from catlearn.preprocess import clean_data as clean
-from catlearn.setup.general_preprocess import GeneralPrepreprocess
+from catlearn.estimator.general_preprocess import GeneralPrepreprocess
 
 from common import get_data
 
@@ -30,17 +30,40 @@ class TestDataClean(unittest.TestCase):
         """Test cleaning zero variace features."""
         features = np.random.random_sample((50, 5))
         features[:, 1:2] = 109.982
-        features = clean.clean_variance(features)['train']
+        test = np.random.random_sample((100, 5))
+        labels = 5 * ['test_label']
 
-        self.assertTrue(np.shape(features) == (50, 4))
+        informative = clean.clean_variance(features, test=test, labels=labels)
+
+        self.assertTrue(np.shape(informative['train']) == (50, 4))
+        self.assertTrue(np.shape(informative['test']) == (100, 4))
 
     def test_inf(self):
         """Test cleaning inf variable features."""
         features = np.random.random_sample((50, 5))
-        features[1][0] = np.inf
-        features = clean.clean_infinite(features)['train']
+        features[0, 0] = np.nan
+        features[40:, 1] = np.nan
+        test = np.random.random_sample((100, 5))
+        labels = 5 * ['test_label']
 
-        self.assertTrue(np.shape(features) == (50, 4))
+        finite = clean.clean_infinite(features, test=test, labels=labels,
+                                      max_impute_fraction=0.1)
+
+        self.assertTrue(np.shape(finite['train']) == (50, 4))
+        self.assertTrue(np.shape(finite['test']) == (100, 4))
+
+    def test_skew(self):
+        """Test cleaning inf variable features."""
+        features = np.random.random_sample((50, 5))
+        features[:, 0] = 0
+        features[0, 0] = 1
+        test = np.random.random_sample((100, 5))
+        labels = 5 * ['test_label']
+
+        symmetric = clean.clean_skewness(features, test=test, labels=labels)
+
+        self.assertTrue(np.shape(symmetric['train']) == (50, 4))
+        self.assertTrue(np.shape(symmetric['test']) == (100, 4))
 
     def test_general(self):
         """Test the general cleaning/scaling function."""

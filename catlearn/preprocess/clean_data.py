@@ -1,6 +1,8 @@
 """Functions to clean data."""
 import numpy as np
 from collections import defaultdict
+from sklearn.preprocessing import Imputer
+from scipy.stats import skew
 
 
 def remove_outliers(features, targets, con=1.4826, dev=3., constraint=None):
@@ -68,33 +70,30 @@ def clean_variance(train, test=None, labels=None, mask=None):
         Indices of features that are not subject to cleaning.
     """
     train = np.asarray(train, dtype=np.float64)
-    if test is not None:
-        test = np.asarray(test, dtype=np.float64)
 
     clean = defaultdict(list)
-    m = train.T
-    # Find features that provide no input for model.
-    for i in list(range(len(m))):
-        if mask is not None:
-            if np.allclose(m[i], m[i][0]) and i not in mask:
-                clean['index'].append(i)
-        elif np.allclose(m[i], m[i][0]):
-            clean['index'].append(i)
-    # Remove bad data from feature matrix.
-    if 'index' in clean:
-        train = np.delete(m, clean['index'], axis=0).T
-        if test is not None:
-            test = np.delete(test.T, clean['index'], axis=0).T
-        if labels is not None:
-            labels = np.delete(labels, clean['index'])
-    clean['train'] = train
-    clean['test'] = test
-    clean['labels'] = labels
+
+    standard_dev = np.nanstd(train, axis=0)
+    assert np.isfinite(standard_dev).all()
+
+    # Index of informative features.
+    index = list(np.where(~np.isclose(0, standard_dev))[0])
+    clean['index'] = index
+
+    # Clean data.
+    clean['train'] = train[:, index].copy()
+    if test is not None:
+        test = np.asarray(test, dtype=np.float64)
+        clean['test'] = test[:, index].copy()
+    if labels is not None:
+        labels = np.asarray(labels)
+        clean['labels'] = labels[index].copy()
 
     return clean
 
 
-def clean_infinite(train, test=None, targets=None, labels=None, mask=None):
+def clean_infinite(train, test=None, targets=None, labels=None, mask=None,
+                   max_impute_fraction=0, strategy='mean'):
     """Remove features that have non finite values in the training data.
 
     Optionally removes features in test data with non fininte values. Returns
@@ -113,12 +112,33 @@ def clean_infinite(train, test=None, targets=None, labels=None, mask=None):
         Optional list of feature labels. Default is None passed.
     mask : list
         Indices of features that are not subject to cleaning.
+    max_impute_fraction : float
+        Maximum fraction of values in a column that can be imputed.
+        Columns with higher fractions of nans values will be discarded.
+    strategy : str
+        Imputation strategy.
+
+    Returns
+    --------
+    data : dict
+        key value pairs
+
+            - 'train' : array
+                Clean training data matrix.
+            - 'test' : array
+                Clean test data matrix
+            - 'targets' : list
+                Boolean list on whether targets are finite.
+            - 'labels' : list
+                Feature labels of clean data set.
+
     """
     clean = defaultdict(list)
 
-    train = np.asarray(train, dtype=np.float64)
+    train = np.array(train, dtype=np.float64)
 
     if targets is not None:
+        targets = np.reshape(targets, [len(targets), 1])
         bool_test = np.isfinite(targets).all(axis=1)
         clean['targets'] = targets[bool_test]
         train = train[bool_test, :]
@@ -126,23 +146,75 @@ def clean_infinite(train, test=None, targets=None, labels=None, mask=None):
     if test is not None:
         test = np.asarray(test, dtype=np.float64)
 
+    # Get the fraction of finite values in each column.
+    if max_impute_fraction > 0:
+        impute = Imputer(missing_values="NaN", strategy=strategy)
+        impute_fraction = 1 - np.isfinite(train).mean(axis=0)
+        to_impute = impute_fraction <= max_impute_fraction
+        train[:, to_impute] = impute.fit_transform(train[:, to_impute])
+        if test is not None:
+            test[:, to_impute] = impute.transform(test[:, to_impute])
+
     # Find features that have only finite values.
     bool_test = np.isfinite(train).all(axis=0)
+    # Save the indices of columns that contain only finite values.
+    clean['index'] = list(np.where(bool_test)[0])
+
     # Also accept features, that are masked.
     if mask is not None:
         bool_test[mask] = True
-    # Save the indices of columns that contain non-finite values.
-    clean['index'] = list(np.where(~bool_test)[0])
+
     # Save a cleaned training data matrix.
-    clean['train'] = train[:, bool_test]
+    clean['train'] = train[:, clean['index']]
     # If a test matrix is given, save a cleaned test data matrix.
     if test is not None:
         assert int(np.shape(test)[1]) == int(np.shape(train)[1])
-        test = test[:, bool_test]
+        test = test[:, clean['index']]
     clean['test'] = test
     if labels is not None:
         assert len(labels) == int(np.shape(train)[1])
-        labels = list(np.array(labels)[bool_test])
+        labels = list(np.array(labels)[clean['index']])
     clean['labels'] = labels
+
+    return clean
+
+
+def clean_skewness(train, test=None, labels=None, mask=None, skewness=3.):
+    """Discards features that are excessively skewed.
+
+    Parameters
+    ----------
+    train : array
+        Feature matrix for the traing data.
+    test : array
+        Optional feature matrix for the test data. Default is None passed.
+    labels : array
+        Optional list of feature labels. Default is None passed.
+    mask : list
+        Indices of features that are not subject to cleaning.
+    skewness : float
+        Maximum allowed skewness thresshold.
+    """
+    train = np.asarray(train, dtype=np.float64)
+
+    clean = defaultdict(list)
+
+    data_skewness = skew(train, axis=0)
+    print(data_skewness)
+    assert np.isfinite(data_skewness).all()
+
+    # Index of informative features.
+    index = list(np.where(abs(data_skewness) < skewness)[0])
+    print(index)
+    clean['index'] = index
+
+    # Clean data.
+    clean['train'] = train[:, index].copy()
+    if test is not None:
+        test = np.asarray(test, dtype=np.float64)
+        clean['test'] = test[:, index].copy()
+    if labels is not None:
+        labels = np.asarray(labels)
+        clean['labels'] = labels[index].copy()
 
     return clean

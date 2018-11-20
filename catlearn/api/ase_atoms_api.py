@@ -1,8 +1,10 @@
 """Functions that interface ase with CatLearn."""
 import types
+import warnings
+import numpy as np
 import ase.db
 from catlearn.utilities.neighborlist import ase_connectivity
-from catlearn.fingerprint.periodic_table_data import default_catlearn_radius
+from catlearn.featurize.periodic_table_data import default_catlearn_radius
 from tqdm import tqdm
 
 
@@ -21,18 +23,18 @@ def database_to_list(fname, selection=None):
     images = []
     for d in s:
         dbid = int(d.id)
-        atoms = c.get_atoms(dbid)
-        atoms.info['key_value_pairs'] = dict(d.key_value_pairs)
-        atoms.info['unique_id'] = str(d.unique_id)
-        atoms.info['id'] = int(d.id)
+        atoms = c.get_atoms(dbid, add_additional_information=True)
+        atoms.info['id'] = dbid
         atoms.info['ctime'] = float(d.ctime)
         atoms.subsets = {}
+        if 'data' in d and 'connectivity' in d.data:
+            atoms.connectivity = np.array(d.data.connectivity)
         images.append(atoms)
 
     return images
 
 
-def images_connectivity(images):
+def images_connectivity(images, check_cn_max=False):
     """Return a list of atoms objects imported from an ase database.
 
     Parameters
@@ -46,6 +48,28 @@ def images_connectivity(images):
         if not hasattr(atoms, 'connectivity'):
             radii = [default_catlearn_radius(z) for z in atoms.numbers]
             atoms.connectivity = ase_connectivity(atoms, radii)
+            if check_cn_max:
+                n_connections = np.sum(atoms.connectivity, axis=0)
+                if max(n_connections) > 12:
+                    msg = 'atom has more than 12 connections.'
+                    if 'id' in atoms.info:
+                        msg += str(atoms.info['id'])
+                    warnings.warn(msg)
+    return images
+
+
+def images_pair_distances(images, mic=True):
+    """Return a list of atoms objects imported from an ase database.
+
+    Parameters
+    ----------
+    fname : str
+        path/filename of ase database.
+    selection : list
+        search filters to limit the import.
+    """
+    for atoms in tqdm(images):
+        atoms.pair_distances = np.array(atoms.get_all_distances(mic=mic))
     return images
 
 

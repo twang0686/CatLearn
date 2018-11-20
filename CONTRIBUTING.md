@@ -15,7 +15,7 @@
 
 There are some general coding conventions that the CatLearn repository adheres to. These include the following:
 
--   Code should support Python 2.7, 3.4 and higher.
+-   Code should support Python 2.7, 3.5 and higher.
 
 -   Code should adhere to the [pep8](https://www.python.org/dev/peps/pep-0008/) and [pyflakes](https://pypi.python.org/pypi/pyflakes) style guides.
 
@@ -32,7 +32,7 @@ It is a bad idea to develop directly on the on the main CatLearn repository. Ins
 -   Fork the repository and then clone it to your local machine.
 
     ```shell
-    $ git clone https://github.com/SUNCAT-Center/CatLearn.git
+    $ git clone https://github.com/<your-github-user-name>/CatLearn.git
     ```
 
 -   Add and track upstream to the local copy.

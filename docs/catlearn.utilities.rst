@@ -18,6 +18,14 @@ catlearn.utilities.database\_functions
     :undoc-members:
     :show-inheritance:
 
+catlearn.utilities.distribution
+-------------------------------
+
+.. automodule:: catlearn.utilities.distribution
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 catlearn.utilities.neighborlist
 -------------------------------
 
